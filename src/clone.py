@@ -12,7 +12,7 @@ def clone(repo: str, force: bool = False):
     if not force and os.path.exists(os.path.join(REPOS_DIR, repo)):
         return 
     proc = subprocess.run(
-        ["git", "clone", f"https://github.com/{repo}", os.path.join(REPOS_DIR, repo)],
+        ["git", "clone", "--depth", "1", f"https://github.com/{repo}", os.path.join(REPOS_DIR, repo)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
