@@ -2,9 +2,11 @@ import pandas as pd
 import subprocess
 import os, sys
 import argparse
-from tqdm import tqdm
-tqdm.pandas()
+from pandarallel import pandarallel
+import multiprocessing
+import time
 
+pandarallel.initialize(nb_workers=min(50, multiprocessing.cpu_count()-1), progress_bar=True)
 
 REPOS_DIR = "data/repos"
 
@@ -73,3 +75,5 @@ if __name__ == "__main__":
 
     df = pd.read_csv(args.csv)
     df.name.progress_apply(clone_and_clean)
+    print("Cloning and cleaning repositories")
+    df.name.parallel_apply(clone_and_clean)
