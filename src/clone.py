@@ -63,10 +63,15 @@ def clean(path: str):
                 # Directory is not empty
                 pass
 
+    # touch file to indicate that cleaning is done
+    open(os.path.join(path, "cleaned"), "w").close()
+
 def clone_and_clean(repo: str):
     clone(repo)
     clean(os.path.join(REPOS_DIR, repo))
 
+def already_cleaned(repo: str) -> bool:
+    return os.path.exists(os.path.join(REPOS_DIR, repo, "cleaned"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Clone julia repositories and clean them")
@@ -74,6 +79,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = pd.read_csv(args.csv)
-    df.name.progress_apply(clone_and_clean)
+    print(df.shape)
+    start = time.time()
+    print("Filtering already cleaned repositories")
+    n_repos = df.shape[0]
+    df = df[~df.name.parallel_apply(already_cleaned)]
+    print(f"Filtered {n_repos - df.shape[0]} already cleaned repositories")
     print("Cloning and cleaning repositories")
     df.name.parallel_apply(clone_and_clean)
+    end = time.time()
+    print(f"Time taken: {end-start} seconds")
