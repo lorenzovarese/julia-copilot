@@ -4,11 +4,15 @@ import os, sys
 import argparse
 from pandarallel import pandarallel
 import multiprocessing
-import time
 
 pandarallel.initialize(nb_workers=min(50, multiprocessing.cpu_count()-1), progress_bar=True)
 
 REPOS_DIR = "data/repos"
+
+EXCLUSION_LIST = [
+    "lanl-ansi/MINLPLib.jl",
+    "Mehroom/Cryptocurrency-Pump-Dump",
+]
 
 def clone(repo: str, force: bool = False):
     if not force and os.path.exists(os.path.join(REPOS_DIR, repo)):
@@ -79,13 +83,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = pd.read_csv(args.csv)
-    print(df.shape)
-    start = time.time()
+
     print("Filtering already cleaned repositories")
-    n_repos = df.shape[0]
+    n_repos_before = df.shape[0]
     df = df[~df.name.parallel_apply(already_cleaned)]
-    print(f"Filtered {n_repos - df.shape[0]} already cleaned repositories")
+    df = df[~df.name.isin(EXCLUSION_LIST)]
+    n_repos_after = df.shape[0]
+    print(f"Filtered {n_repos_before - n_repos_after} already cleaned repositories")
+
     print("Cloning and cleaning repositories")
     df.name.parallel_apply(clone_and_clean)
-    end = time.time()
-    print(f"Time taken: {end-start} seconds")
