@@ -1,9 +1,11 @@
 import pandas as pd
 import subprocess
 import os, sys
+import zipfile
 import argparse
 from pandarallel import pandarallel
 import multiprocessing
+from tqdm import tqdm
 
 pandarallel.initialize(nb_workers=min(50, multiprocessing.cpu_count()-1), progress_bar=True)
 
@@ -86,10 +88,29 @@ if __name__ == "__main__":
 
     print("Filtering already cleaned repositories")
     n_repos_before = df.shape[0]
-    df = df[~df.name.parallel_apply(already_cleaned)]
     df = df[~df.name.isin(EXCLUSION_LIST)]
     n_repos_after = df.shape[0]
+    print(f"Filtered {n_repos_before - n_repos_after} repositories from the exclusion list")
+
+    to_clone = df[~df.name.parallel_apply(already_cleaned)]
+    n_repos_after = to_clone.shape[0]
     print(f"Filtered {n_repos_before - n_repos_after} already cleaned repositories")
 
     print("Cloning and cleaning repositories")
-    df.name.parallel_apply(clone_and_clean)
+    if to_clone.shape[0] > 0:
+        to_clone.name.parallel_apply(clone_and_clean)
+
+    file_count = sum(len(files) for _, _, files in os.walk(REPOS_DIR))
+    # zip the "data/repos" directory
+    final_zip_path = "data/repos.zip"
+    with zipfile.ZipFile(final_zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        with tqdm(total=file_count, desc="Zipping files", unit="file") as pbar:
+            for root, dirs, files in os.walk(REPOS_DIR):
+                for file in files:
+                    try:
+                        zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), REPOS_DIR))
+                    except Exception as e:
+                        pass
+                    pbar.update(1)
+
+    print(f"All repositories have been zipped into {final_zip_path}")
