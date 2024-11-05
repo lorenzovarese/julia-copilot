@@ -103,7 +103,7 @@ if __name__ == "__main__":
     file_count = sum(len(files) for _, _, files in os.walk(REPOS_DIR))
     # zip the "data/repos" directory
     final_zip_path = "data/repos.zip"
-    with zipfile.ZipFile(final_zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(final_zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
         with tqdm(total=file_count, desc="Zipping files", unit="file") as pbar:
             for root, dirs, files in os.walk(REPOS_DIR):
                 for file in files:
