@@ -80,6 +80,7 @@ def already_cleaned(repo: str) -> bool:
 def zipped_repos(
         zip_path="data/repos.zip", 
         csv_with_repos="data/julia.csv.gz",
+        keep_repos_dir=False,
         force=False, 
         verbose=False,
     ) -> zipfile.ZipFile:
@@ -126,13 +127,19 @@ def zipped_repos(
                     pbar.update(1)
 
     print(f"All repositories have been zipped into {final_zip_path}")
+
+    if not keep_repos_dir:
+        if verbose: print(f"Removing {REPOS_DIR}")
+        os.system(f"rm -rf {REPOS_DIR}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Clone julia repositories and clean them")
     parser.add_argument("-c", "--csv", default="data/julia.csv.gz", help="Path to the csv file containing the repositories. Default is data/julia.csv.gz")
     parser.add_argument("-z", "--zip", default="data/repos.zip", help="Path to the zip file to store the repositories. Default is data/repos.zip")
+    parser.add_argument("-k", "--keep", help="Keep the repositories directory after zipping", action="store_true")
     parser.add_argument("-f", "--force", help="Force the operation", action="store_true")
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     args = parser.parse_args()
 
-    zipped_repos(args.zip, args.csv, args.force, args.verbose)
+    zipped_repos(args.zip, args.csv, args.keep, args.force, args.verbose)
 
