@@ -7,8 +7,6 @@ from pandarallel import pandarallel
 import multiprocessing
 from tqdm import tqdm
 
-pandarallel.initialize(nb_workers=min(50, multiprocessing.cpu_count()-1), progress_bar=True)
-
 REPOS_DIR = "data/repos"
 
 EXCLUSION_LIST = [
@@ -79,38 +77,62 @@ def clone_and_clean(repo: str):
 def already_cleaned(repo: str) -> bool:
     return os.path.exists(os.path.join(REPOS_DIR, repo, "cleaned"))
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Clone julia repositories and clean them")
-    parser.add_argument("-c", "--csv", help="Path to the csv file containing the repositories", required=True)
-    args = parser.parse_args()
+def zipped_repos(
+        zip_path="data/repos.zip", 
+        csv_with_repos="data/julia.csv.gz",
+        force=False, 
+        verbose=False,
+    ) -> zipfile.ZipFile:
+    if not force and os.path.exists(zip_path):
+        if verbose: print(f"Zip file {zip_path} already exists, loading that one.")
+        return zipfile.ZipFile(zip_path, "r")
+    
+    pandarallel.initialize(nb_workers=min(50, multiprocessing.cpu_count()-1), progress_bar=True, verbose=2 if verbose else 0)
 
+    if verbose: print(f"Zip file {zip_path} does not exist (or force was set to True), creating it.")
+
+    if verbose: print(f"Reading CSV file {csv_with_repos}")
     df = pd.read_csv(args.csv)
 
-    print("Filtering already cleaned repositories")
+    if verbose: print("Filtering already cleaned repositories")
     n_repos_before = df.shape[0]
     df = df[~df.name.isin(EXCLUSION_LIST)]
     n_repos_after = df.shape[0]
-    print(f"Filtered {n_repos_before - n_repos_after} repositories from the exclusion list")
+    if verbose: print(f"Filtered {n_repos_before - n_repos_after} repositories from the exclusion list")
 
+    if verbose: print("Filtering already cleaned repositories")
+    n_repos_before = df.shape[0]
     to_clone = df[~df.name.parallel_apply(already_cleaned)]
     n_repos_after = to_clone.shape[0]
-    print(f"Filtered {n_repos_before - n_repos_after} already cleaned repositories")
+    if verbose: print(f"Filtered {n_repos_before - n_repos_after} already cleaned repositories")
 
-    print("Cloning and cleaning repositories")
+    if verbose: print("Cloning and cleaning repositories")
     if to_clone.shape[0] > 0:
         to_clone.name.parallel_apply(clone_and_clean)
 
-    file_count = sum(len(files) for _, _, files in os.walk(REPOS_DIR))
-    # zip the "data/repos" directory
+    if verbose: print("Zipping repositories")
+    file_count = sum(len(files) for file, _, files in os.walk(REPOS_DIR) if file != "cleaned")
     final_zip_path = "data/repos.zip"
     with zipfile.ZipFile(final_zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
         with tqdm(total=file_count, desc="Zipping files", unit="file") as pbar:
-            for root, dirs, files in os.walk(REPOS_DIR):
+            for root, _, files in os.walk(REPOS_DIR):
                 for file in files:
                     try:
+                        if file == "cleaned":
+                            continue
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), REPOS_DIR))
-                    except Exception as e:
+                    except Exception:
                         pass
                     pbar.update(1)
 
     print(f"All repositories have been zipped into {final_zip_path}")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Clone julia repositories and clean them")
+    parser.add_argument("-c", "--csv", default="data/julia.csv.gz", help="Path to the csv file containing the repositories. Default is data/julia.csv.gz")
+    parser.add_argument("-z", "--zip", default="data/repos.zip", help="Path to the zip file to store the repositories. Default is data/repos.zip")
+    parser.add_argument("-f", "--force", help="Force the operation", action="store_true")
+    parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    args = parser.parse_args()
+
+    zipped_repos(args.zip, args.csv, args.force, args.verbose)
+
