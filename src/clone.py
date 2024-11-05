@@ -15,6 +15,13 @@ EXCLUSION_LIST = [
 ]
 
 def clone(repo: str, force: bool = False):
+  """
+    Clones a GitHub repository into a local directory.
+
+    Args:
+        repo (str): The repository to clone, in the format "owner/repo_name".
+        force (bool, optional): If `True`, re-clones the repository even if it already exists. Defaults to `False`.
+    """
     if not force and os.path.exists(os.path.join(REPOS_DIR, repo)):
         return 
     proc = subprocess.run(
@@ -28,6 +35,22 @@ def clone(repo: str, force: bool = False):
         print(proc.stderr.decode(), file=sys.stderr)
 
 def clean(path: str):
+    """
+    Cleans a specified directory by removing known unnecessary directories, keeping only Julia files and removing empty directories.
+
+    Args:
+        path (str): The directory path to clean.
+
+    Notes:
+        - Deletes the directories `.git/`, `.github/`, and `.vscode/` if present.
+        - Removes all files not ending with `.jl`.
+        - Removes empty directories after file deletions.
+        - Creates a `cleaned` file in the directory as a marker of completion. 
+          Useful for when the cloning and cleaning process is interrupted.
+
+    Raises:
+        Prints an error to standard error if a file or directory cannot be removed.
+    """
     # Check if the given path is a directory
     if not os.path.isdir(path):
         print(f"The path {path} is not a valid directory.")
@@ -84,6 +107,27 @@ def zipped_repos(
         force=False, 
         verbose=False,
     ) -> zipfile.ZipFile:
+    """
+    Clones, cleans, and compresses a set of repositories specified in a CSV file into a zip archive.
+
+    Args:
+        zip_path (str): The path where the zip file will be saved. Defaults to "data/repos.zip".
+        csv_with_repos (str): Path to the CSV file containing repository names. Defaults to "data/julia.csv.gz".
+        keep_repos_dir (bool): If `False`, removes the repositories directory after zipping. Defaults to `False`.
+        force (bool): If `True`, recreates the zip file even if it already exists. Defaults to `False`.
+        verbose (bool): If `True`, outputs detailed process information. Defaults to `False`.
+
+    Returns:
+        zipfile.ZipFile: The created zip file object.
+
+    Notes:
+        - Uses an exclusion list to filter repositories before cloning.
+        - Clones and cleans repositories before adding them to the zip file.
+        - Deletes intermediate repository files unless `keep_repos_dir` is set to `True`.
+
+    Raises:
+        Prints errors to standard error for issues encountered during file or directory operations.
+    """
     if not force and os.path.exists(zip_path):
         if verbose: print(f"Zip file {zip_path} already exists, loading that one.")
         return zipfile.ZipFile(zip_path, "r")
@@ -138,6 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("-z", "--zip", default="data/repos.zip", help="Path to the zip file to store the repositories. Default is data/repos.zip")
     parser.add_argument("-k", "--keep", help="Keep the repositories directory after zipping", action="store_true")
     parser.add_argument("-f", "--force", help="Force the operation", action="store_true")
+    parser.add_argument("--force-clone", help="Force the cloning of the repositories", action="store_true")
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     args = parser.parse_args()
 
