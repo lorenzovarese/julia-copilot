@@ -126,7 +126,7 @@ def zipped_repos(
                         pass
                     pbar.update(1)
 
-    print(f"All repositories have been zipped into {final_zip_path}")
+    if verbose: print(f"All repositories have been zipped into {final_zip_path}")
 
     if not keep_repos_dir:
         if verbose: print(f"Removing {REPOS_DIR}")
