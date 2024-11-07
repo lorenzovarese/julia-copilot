@@ -15,7 +15,7 @@ EXCLUSION_LIST = [
 ]
 
 def clone(repo: str, force: bool = False):
-  """
+    """
     Clones a GitHub repository into a local directory.
 
     Args:
