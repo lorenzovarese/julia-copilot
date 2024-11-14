@@ -17,9 +17,20 @@ combined_data_path = Path("data/combined_projects.json")
 def extract_function_details(node, code, file_path, function_type="basic"):
     code_segment = code[node.start_byte:node.end_byte]
     
-    # Enhanced regex to capture Julia function definition
-    signature_match = re.search(r'^\s*function\s+(\w+\(.*?\))', code_segment, re.MULTILINE)
-    signature = signature_match.group(0).strip() if signature_match else ""
+    # Define the signature and body based on function type
+    if function_type == "basic":
+        # Standard function with `function ... end` syntax
+        signature_match = re.search(r'^\s*function\s+(\w+\(.*?\))', code_segment, re.MULTILINE)
+        signature = signature_match.group(0).strip() if signature_match else ""
+        body = get_cleaned_body(node, code, signature)
+    elif function_type == "single-line":
+        # Single-line function with `name(args) = expression` syntax
+        signature_match = re.match(r'^\s*(\w+\(.*?\))\s*=', code_segment)
+        signature = signature_match.group(1).strip() if signature_match else ""
+        body = code_segment.split("=", 1)[1].strip() if "=" in code_segment else ""
+    else:
+        signature = ""
+        body = ""
 
     # Skip if 'test' appears in the function signature
     if "test" in signature.lower():
@@ -31,9 +42,6 @@ def extract_function_details(node, code, file_path, function_type="basic"):
     
     # Extract inline comments
     inline_comments = collect_inline_comments(node, code)
-    
-    # Extract the function body without the function signature
-    body = get_cleaned_body(node, code, signature)
     
     # Calculate the line number based on byte position
     line_number = code[:node.start_byte].count('\n') + 1
@@ -79,21 +87,25 @@ def extract_functions(node, code, file_path, module_name=""):
                 if module_name:
                     func_details["module"] = module_name
                 functions.append(func_details)
-        elif child.type == "assignment" and "->" in code[child.start_byte:child.end_byte]:
-            # Anonymous function in assignment
-            func_details = extract_anonymous_function(child, code)
-            if func_details:
-                func_details["file_path"] = file_path
-                func_details["type"] = "anonymous"
-                if module_name:
-                    func_details["module"] = module_name
-                functions.append(func_details)
-        elif child.type == "function_expression": # Single-line function
-            func_details = extract_function_details(child, code, file_path, function_type="single-line")
-            if func_details:
-                if module_name:
-                    func_details["module"] = module_name
-                functions.append(func_details)
+        elif child.type == "assignment":
+            # Check for anonymous or single-line functions
+            code_segment = code[child.start_byte:child.end_byte]
+            if "->" in code_segment:
+                # Anonymous function in assignment
+                func_details = extract_anonymous_function(child, code)
+                if func_details:
+                    func_details["file_path"] = file_path
+                    func_details["type"] = "anonymous"
+                    if module_name:
+                        func_details["module"] = module_name
+                    functions.append(func_details)
+            elif re.match(r'^\s*\w+\(.*?\)\s*=', code_segment):
+                # Single-line function with `name(args) = expression` syntax
+                func_details = extract_function_details(child, code, file_path, function_type="single-line")
+                if func_details:
+                    if module_name:
+                        func_details["module"] = module_name
+                    functions.append(func_details)
         elif child.type == "module":
             module_tokens = code[child.start_byte:child.end_byte].split()
             current_module_name = module_tokens[1] if len(module_tokens) > 1 else "unknown_module"
