@@ -1,5 +1,5 @@
 import json
-import zipfile
+import re
 from pathlib import Path
 from tree_sitter import Language, Parser
 from clone import zipped_repos  # Assumes zipped_repos is in clone.py
@@ -14,25 +14,51 @@ output_folder = Path("data/extracted_projects")
 combined_data_path = Path("data/combined_projects.json")
 
 # Function to extract function details from a node
-def extract_function_details(node, code):
+def extract_function_details(node, code, file_path, function_type="basic"):
     code_segment = code[node.start_byte:node.end_byte]
-    signature = code_segment.splitlines()[0] if code_segment.splitlines() else ""
+    
+    # Enhanced regex to capture Julia function definition
+    signature_match = re.search(r'^\s*function\s+(\w+\(.*?\))', code_segment, re.MULTILINE)
+    signature = signature_match.group(0).strip() if signature_match else ""
 
     # Skip if 'test' appears in the function signature
     if "test" in signature.lower():
         return None
 
+    # Documentation extraction
     doc_node = node.prev_sibling if node.prev_sibling and node.prev_sibling.type == 'string_literal' else None
     documentation = code[doc_node.start_byte:doc_node.end_byte] if doc_node else ""
+    
+    # Extract inline comments
     inline_comments = collect_inline_comments(node, code)
-    body = get_cleaned_body(node, code)
+    
+    # Extract the function body without the function signature
+    body = get_cleaned_body(node, code, signature)
+    
+    # Calculate the line number based on byte position
+    line_number = code[:node.start_byte].count('\n') + 1
 
     return {
-        "signature": signature.strip(),
+        "signature": signature,
         "documentation": documentation.strip(),
         "inline_comments": inline_comments,
-        "body": body
+        "body": body,
+        "file_path": file_path,
+        "line_number": line_number,
+        "type": function_type
     }
+
+# Function to extract the cleaned body of a function without the signature
+def get_cleaned_body(node, code, signature):
+    body_lines = []
+    signature_found = False
+    for line in code[node.start_byte:node.end_byte].splitlines():  # Removed .decode("utf-8")
+        if signature in line:
+            signature_found = True
+            continue
+        if signature_found:
+            body_lines.append(line.strip())  # Only add lines after the signature line
+    return "\n".join(body_lines)
 
 # Function to collect inline comments recursively
 def collect_inline_comments(node, code):
@@ -43,38 +69,61 @@ def collect_inline_comments(node, code):
         inline_comments.extend(collect_inline_comments(child, code))
     return inline_comments
 
-# Function to extract the cleaned body of a function
-def get_cleaned_body(node, code):
-    body_lines = []
-    for child in node.children:
-        if child.type not in ('line_comment', 'block_comment'):
-            line = code[child.start_byte:child.end_byte].strip()
-            if line:
-                body_lines.append(line)
-    return "\n".join(body_lines)
-
 # Recursive function to extract functions and handle nested modules
-def extract_functions(node, code, module_name=""):
+def extract_functions(node, code, file_path, module_name=""):
     functions = []
     for child in node.children:
         if child.type == "function_definition":
-            func_details = extract_function_details(child, code)
-            if func_details:  # Only add if func_details is not None
+            func_details = extract_function_details(child, code, file_path, function_type="basic")
+            if func_details:
+                if module_name:
+                    func_details["module"] = module_name
+                functions.append(func_details)
+        elif child.type == "assignment" and "->" in code[child.start_byte:child.end_byte]:
+            # Anonymous function in assignment
+            func_details = extract_anonymous_function(child, code)
+            if func_details:
+                func_details["file_path"] = file_path
+                func_details["type"] = "anonymous"
+                if module_name:
+                    func_details["module"] = module_name
+                functions.append(func_details)
+        elif child.type == "function_expression": # Single-line function
+            func_details = extract_function_details(child, code, file_path, function_type="single-line")
+            if func_details:
                 if module_name:
                     func_details["module"] = module_name
                 functions.append(func_details)
         elif child.type == "module":
             module_tokens = code[child.start_byte:child.end_byte].split()
             current_module_name = module_tokens[1] if len(module_tokens) > 1 else "unknown_module"
-            functions.extend(extract_functions(child, code, module_name=current_module_name))
+            functions.extend(extract_functions(child, code, file_path, module_name=current_module_name))
         else:
-            functions.extend(extract_functions(child, code, module_name=module_name))
+            functions.extend(extract_functions(child, code, file_path, module_name=module_name))
     return functions
+
+# Function to extract details for anonymous functions
+def extract_anonymous_function(node, code):
+    code_segment = code[node.start_byte:node.end_byte]
+    if "->" not in code_segment:
+        return None
+    
+    signature = code_segment.splitlines()[0].strip()
+    body = code_segment.split("->", 1)[1].strip()  # Extract body after `->`
+    inline_comments = collect_inline_comments(node, code)
+
+    return {
+        "signature": signature,
+        "documentation": "",  # Anonymous functions typically lack documentation
+        "inline_comments": inline_comments,
+        "body": body,
+        "type": "anonymous"
+    }
 
 # Process the zipped repositories and save each project’s data
 def process_zipped_repos(zip_file):
     output_folder.mkdir(parents=True, exist_ok=True)
-    project_data = []
+    project_data = {}
     processed_developers = set()  # Track processed developers
     
     with zip_file as zf:
@@ -89,7 +138,7 @@ def process_zipped_repos(zip_file):
             
             developer = path_parts[0]
             project = path_parts[1]
-            project_id = f"{developer}/{project}"
+            project_key = f"{developer}/{project}"
             
             # Limit processing to the first 10 unique developers
             if developer not in processed_developers:
@@ -98,7 +147,6 @@ def process_zipped_repos(zip_file):
                 processed_developers.add(developer)
 
             # Only process files within this specific developer/project folder
-            project_functions = []
             with zf.open(file_name) as file:
                 code = file.read().decode('utf-8')
                 try:
@@ -106,27 +154,22 @@ def process_zipped_repos(zip_file):
                     if tree.root_node.has_error:
                         print(f"Parsing error in {file_name}, skipping.")
                         continue
-                    functions = extract_functions(tree.root_node, code)
-                    project_functions.extend(functions)
+                    # Extract functions
+                    functions = extract_functions(tree.root_node, code, file_path=file_name)
+                    
+                    # Add functions to the existing project entry if it exists, or create a new one
+                    if project_key not in project_data:
+                        project_data[project_key] = {
+                            "author": developer,
+                            "project": project,
+                            "functions": []
+                        }
+                    project_data[project_key]["functions"].extend(functions)
                 except ValueError as e:
                     print(f"Failed to parse {file_name}: {e}")
                     continue
-            
-            # Store functions and project information
-            if project_functions:
-                project_info = {
-                    "project": project_id,
-                    "functions": project_functions
-                }
-                
-                # Save individual project JSON file
-                project_file = output_folder / f"{developer}_{project}.json"
-                with project_file.open("w") as json_file:
-                    json.dump(project_info, json_file, indent=4)
-                
-                project_data.append(project_info)
     
-    return project_data
+    return list(project_data.values())
 
 # Save combined project data as a single JSON file
 def save_combined_data(project_data):
