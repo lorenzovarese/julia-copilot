@@ -137,7 +137,7 @@ def zipped_repos(
     if verbose: print(f"Zip file {zip_path} does not exist (or force was set to True), creating it.")
 
     if verbose: print(f"Reading CSV file {csv_with_repos}")
-    df = pd.read_csv(args.csv)
+    df = pd.read_csv(csv_with_repos)
 
     if verbose: print("Filtering already cleaned repositories")
     n_repos_before = df.shape[0]
