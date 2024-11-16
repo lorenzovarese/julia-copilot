@@ -12,6 +12,7 @@ REPOS_DIR = "data/repos"
 EXCLUSION_LIST = [
     "lanl-ansi/MINLPLib.jl",
     "Mehrnoom/Cryptocurrency-Pump-Dump",
+    "Cheng-Lin-Li/Market-Trend-Prediction"
 ]
 
 def clone(repo: str, force: bool = False):
