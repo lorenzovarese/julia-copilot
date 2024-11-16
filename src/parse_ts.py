@@ -2,10 +2,10 @@ import json
 import re
 from pathlib import Path
 from tree_sitter import Language, Parser
-from clone import zipped_repos  # Assumes zipped_repos is in clone.py
+from clone import zipped_repos
 
 # Load the Julia language grammar
-JULIA_LANGUAGE = Language('build/my-languages.so', 'julia')
+JULIA_LANGUAGE = Language('build/julia.so', 'julia')
 
 # Initialize a parser for Julia
 parser = Parser()
