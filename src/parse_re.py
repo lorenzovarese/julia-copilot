@@ -2,8 +2,23 @@ import json
 import re
 from pathlib import Path
 from typing import List, Dict
-import zipfile
 import sys
+import time
+import pandas as pd  
+from pandarallel import pandarallel  # For parallel processing
+import logging
+import multiprocessing
+
+# Configure logging to redirect messages to parsing_re_errors.txt
+logging.basicConfig(
+    filename='parsing_re_errors.txt',
+    filemode='a',  # Append mode
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO  # Set to INFO to capture both INFO and ERROR messages
+)
+
+# Initialize pandarallel with 8 workers and enable progress bar
+pandarallel.initialize(progress_bar=True, nb_workers=min(50, multiprocessing.cpu_count()-1))
 
 # Define regex patterns
 
@@ -38,6 +53,7 @@ ANONYMOUS_FUNC_PATTERN = re.compile(r'''
     \(\s*(?P<params>[^\)]*)\s*\)\s*->\s*       # parameters within parentheses followed by ->
     (?P<body>.*)                                # function body expression
 ''', re.MULTILINE | re.VERBOSE)
+
 
 def extract_functions(code: str, file_path: str) -> List[Dict]:
     """
@@ -109,10 +125,10 @@ def extract_functions(code: str, file_path: str) -> List[Dict]:
             inline_comments = re.findall(r'#.*', body)
 
             functions.append({
-                "documentation": documentation if documentation else "None",
+                "documentation": documentation if documentation else "",
                 "signature": f"function {func_name}({params})",
                 "body": body,
-                "inline_comments": inline_comments if inline_comments else ["None"],
+                "inline_comments": inline_comments if inline_comments else [],
                 "file_path": file_path,
                 "line_number": index + 1,
                 "type": "basic"
@@ -163,10 +179,10 @@ def extract_functions(code: str, file_path: str) -> List[Dict]:
                 # inline_comments already populated
 
                 functions.append({
-                    "documentation": documentation if documentation else "None",
+                    "documentation": documentation if documentation else "",
                     "signature": f"{func_name}({params}) = begin",
                     "body": body,
-                    "inline_comments": inline_comments if inline_comments else ["None"],
+                    "inline_comments": inline_comments if inline_comments else [],
                     "file_path": file_path,
                     "line_number": index + 1 - len(body_lines) - 2,  # Adjust line number
                     "type": "single-line"
@@ -177,10 +193,10 @@ def extract_functions(code: str, file_path: str) -> List[Dict]:
                 inline_comments.extend(comments)
 
                 functions.append({
-                    "documentation": documentation if documentation else "None",
+                    "documentation": documentation if documentation else "",
                     "signature": f"{func_name}({params}) =",
                     "body": body,
-                    "inline_comments": inline_comments if inline_comments else ["None"],
+                    "inline_comments": inline_comments if inline_comments else [],
                     "file_path": file_path,
                     "line_number": index + 1,
                     "type": "single-line"
@@ -232,10 +248,10 @@ def extract_functions(code: str, file_path: str) -> List[Dict]:
                 # inline_comments already populated
 
                 functions.append({
-                    "documentation": documentation if documentation else "None",
+                    "documentation": documentation if documentation else "",
                     "signature": f"Anonymous Function assigned to {var_name}({params}) = begin",
                     "body": body,
-                    "inline_comments": inline_comments if inline_comments else ["None"],
+                    "inline_comments": inline_comments if inline_comments else [],
                     "file_path": file_path,
                     "line_number": index + 1 - len(body_lines) - 2,  # Adjust line number
                     "type": "anonymous"
@@ -246,10 +262,10 @@ def extract_functions(code: str, file_path: str) -> List[Dict]:
                 inline_comments.extend(comments)
 
                 functions.append({
-                    "documentation": documentation if documentation else "None",
+                    "documentation": documentation if documentation else "",
                     "signature": f"Anonymous Function assigned to {var_name}({params}) =",
                     "body": body,
-                    "inline_comments": inline_comments if inline_comments else ["None"],
+                    "inline_comments": inline_comments if inline_comments else [],
                     "file_path": file_path,
                     "line_number": index + 1,
                     "type": "anonymous"
@@ -262,6 +278,7 @@ def extract_functions(code: str, file_path: str) -> List[Dict]:
 
     return functions
 
+
 def split_code_comment(line):
     """
     Splits a line into code and comment parts.
@@ -272,67 +289,116 @@ def split_code_comment(line):
     comments = [part.strip() for part in parts[1:]] if len(parts) > 1 else []
     return code, comments
 
-def process_zipped_repos(zip_file: zipfile.ZipFile) -> List[Dict]:
+
+def is_file_too_long(file_path: Path, max_lines: int = 10000) -> bool:
     """
-    Process a zipped repository containing Julia projects.
+    Checks if a file exceeds the maximum number of lines.
 
     Args:
-        zip_file (zipfile.ZipFile): The zip file object to process.
+        file_path (Path): Path to the file.
+        max_lines (int): Maximum allowed lines.
+
+    Returns:
+        bool: True if file has more than max_lines, False otherwise.
+    """
+    try:
+        with file_path.open('r', encoding='utf-8') as f:
+            for i, _ in enumerate(f, 1):
+                if i > max_lines:
+                    return True
+        return False
+    except Exception as e:
+        logging.error(f"Error reading {file_path}: {e}")
+        return True  # Treat unreadable files as too long to skip
+
+
+def process_author(author_path: Path) -> List[Dict]:
+    """
+    Process a single author: extract functions from all projects and files.
+
+    Args:
+        author_path (Path): Path to the author's directory.
+
+    Returns:
+        List[Dict]: A list of project dictionaries with extracted functions.
+    """
+    developer = author_path.name
+    start_time = time.time()  # Start timer for the author
+    project_entries = []
+
+    try:
+        # Iterate through each project under the author
+        for project_path in author_path.iterdir():
+            if not project_path.is_dir():
+                continue  # Skip non-directory files
+
+            project = project_path.name
+            project_functions = []
+
+            # Iterate through each .jl file in the project
+            for file_path in project_path.rglob('*.jl'):
+                # Check if file exceeds 10000 lines
+                if is_file_too_long(file_path, max_lines=10000):
+                    logging.info(f"Skipping {file_path} as it exceeds 10000 lines.")
+                    continue
+
+                try:
+                    code = file_path.read_text(encoding='utf-8')
+                except UnicodeDecodeError:
+                    logging.error(f"UnicodeDecodeError in {file_path}, skipping.")
+                    continue
+                except Exception as e:
+                    logging.error(f"Error reading {file_path}: {e}, skipping.")
+                    continue
+
+                # Extract functions from the code
+                functions = extract_functions(code, str(file_path))
+                project_functions.extend(functions)
+
+            if project_functions:
+                # Create a single project entry with all functions from its .jl files
+                project_entry = {
+                    "author": developer,
+                    "project": project,
+                    "functions": project_functions
+                }
+                project_entries.append(project_entry)
+
+    except Exception as e:
+        logging.error(f"Error processing author '{developer}': {e}")
+
+    # Measure elapsed time
+    elapsed = time.time() - start_time
+    if elapsed > 10:
+        logging.info(f"Author '{developer}' took {elapsed:.2f} seconds to process.")
+
+    return project_entries
+
+
+def process_repos(repo_path: Path, selected_authors: List[Path]) -> List[Dict]:
+    """
+    Process the repository by extracting functions from selected authors in parallel.
+
+    Args:
+        repo_path (Path): Path to the 'repo' directory.
+        selected_authors (List[Path]): List of Paths to author directories.
 
     Returns:
         List[Dict]: A list of projects with their functions.
     """
-    output_folder = Path("data/extracted_projects")
-    output_folder.mkdir(parents=True, exist_ok=True)
-    project_data = {}
-    processed_developers = set()  # Track processed developers
+    # Create a DataFrame of selected authors
+    authors_df = pd.DataFrame({'author_path': selected_authors})
 
-    for file_name in zip_file.namelist():
-        if "test" in file_name.lower() or not file_name.endswith('.jl'):
-            continue
+    # Apply the process_author function in parallel with progress bar
+    authors_df['projects'] = authors_df.parallel_apply(lambda row: process_author(row['author_path']), axis=1)
 
-        # Extract developer and project name from the path
-        path_parts = file_name.split('/')
-        if len(path_parts) < 3:
-            continue
+    # Aggregate all project entries into a single list
+    project_data = []
+    for projects in authors_df['projects']:
+        project_data.extend(projects)
 
-        developer = path_parts[0].strip()
-        project = path_parts[1].strip()
-        project_key = f"{developer}/{project}"
+    return project_data
 
-        # Determine if this developer should be processed
-        if developer not in processed_developers:
-            if len(processed_developers) >= 100:
-                # Already processed 100 developers, skip new developers
-                continue
-            processed_developers.add(developer)
-
-        # Only process files within the first 100 developers
-        if developer not in processed_developers:
-            # This check is redundant due to the above, but kept for clarity
-            continue
-
-        # Now, process the file
-        with zip_file.open(file_name) as file:
-            try:
-                code = file.read().decode('utf-8')
-            except UnicodeDecodeError:
-                print(f"UnicodeDecodeError in {file_name}, skipping.")
-                continue
-
-            # Extract functions using regex
-            functions = extract_functions(code, file_path=file_name)
-
-            # Add functions to the existing project entry if it exists, or create a new one
-            if project_key not in project_data:
-                project_data[project_key] = {
-                    "author": developer,
-                    "project": project,
-                    "functions": []
-                }
-            project_data[project_key]["functions"].extend(functions)
-
-    return list(project_data.values())
 
 def save_combined_data(project_data: List[Dict], output_path: Path):
     """
@@ -348,7 +414,8 @@ def save_combined_data(project_data: List[Dict], output_path: Path):
             json.dump(project_data, f, indent=4, ensure_ascii=False)
         print(f"Data successfully saved to {output_path}")
     except Exception as e:
-        print(f"Error saving data to JSON: {e}")
+        logging.error(f"Error saving data to JSON: {e}")
+
 
 def compute_metrics(project_data: List[Dict]):
     """
@@ -382,9 +449,9 @@ def compute_metrics(project_data: List[Dict]):
             if func_type not in func_types:
                 continue
             func_types[func_type]['count'] += 1
-            if func['documentation'] and func['documentation'] != "None":
+            if func['documentation'] and func['documentation'] != "":
                 func_types[func_type]['documented'] += 1
-            if func['inline_comments'] and func['inline_comments'] != ["None"]:
+            if func['inline_comments'] and func['inline_comments'] != []:
                 func_types[func_type]['commented'] += 1
 
     # Print overall metrics
@@ -413,25 +480,32 @@ def compute_metrics(project_data: List[Dict]):
         print(f"{type_name:<25} {count:<10} {pct_doc:<15.2f} {pct_com:<15.2f}")
     print()
 
+
 def main():
     """
-    Main function to process zipped Julia repositories and extract function data.
+    Main function to process the repository and extract function data.
     """
     if len(sys.argv) != 2:
-        print("Usage: python extract_julia_functions.py path_to_zip_file.zip")
+        print("Usage: python extract_julia_functions.py path_to_repo_folder")
         sys.exit(1)
 
-    zip_path = sys.argv[1]
-    zip_file = Path(zip_path)
-    if not zip_file.is_file():
-        print(f"The zip file {zip_path} does not exist.")
+    repo_path = Path(sys.argv[1])
+    if not repo_path.is_dir():
+        print(f"The repository folder {repo_path} does not exist or is not a directory.")
         sys.exit(1)
 
     try:
-        with zipfile.ZipFile(zip_file, 'r') as zf:
-            project_data = process_zipped_repos(zf)
-    except zipfile.BadZipFile:
-        print(f"The file {zip_path} is not a valid zip file.")
+        # Extract list of unique authors (first-level directories)
+        all_authors = [author for author in repo_path.iterdir() if author.is_dir()]
+        selected_authors = sorted(all_authors)[:]  # Adjust the number as needed [:N]
+
+        print(f"Selected {len(selected_authors)} authors for processing.")
+
+        # Process the selected authors in parallel
+        project_data = process_repos(repo_path, selected_authors)
+
+    except Exception as e:
+        logging.error(f"An error occurred while processing the repository: {e}")
         sys.exit(1)
 
     # Define the output JSON file path
@@ -442,6 +516,7 @@ def main():
 
     # Compute and print metrics
     compute_metrics(project_data)
+
 
 if __name__ == "__main__":
     main()
