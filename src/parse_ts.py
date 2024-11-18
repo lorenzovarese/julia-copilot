@@ -1,11 +1,38 @@
+from tree_sitter import Language
+import os
 import json
 import re
 from pathlib import Path
-from tree_sitter import Language, Parser
+from tree_sitter import Parser
 from clone import zipped_repos
 
+# Define the path for the built library
+BUILD_DIR = 'build'
+LIB_NAME = 'julia.so'
+LIB_PATH = f'{BUILD_DIR}/{LIB_NAME}'
+
+# Ensure the build directory exists
+if not os.path.exists(BUILD_DIR):
+    os.makedirs(BUILD_DIR)
+
+# Check if the library is already built
+if not os.path.exists(LIB_PATH):
+    # Build the language library
+    Language.build_library(
+        # Store the library in the `build` directory
+        LIB_PATH,
+
+        # Include one or more languages
+        [
+            'tree-sitter-julia'
+        ]
+    )
+    print(f"Built languages library at {LIB_PATH}")
+else:
+    print(f"Using existing language library at {LIB_PATH}")
+
 # Load the Julia language grammar
-JULIA_LANGUAGE = Language('build/julia.so', 'julia')
+JULIA_LANGUAGE = Language(LIB_PATH, 'julia')
 
 # Initialize a parser for Julia
 parser = Parser()
