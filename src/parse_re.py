@@ -33,8 +33,8 @@ DOC_PATTERN = re.compile(r'''
 MULTI_LINE_FUNC_PATTERN = re.compile(r'''
     ^\s*function\s+                             # function keyword
     (?P<name>[A-Za-z_][\w!?@#$%^&*+\-]*)\s*     # function name with special characters
-    \(\s*(?P<params>[^\)]*)\s*\)\s*\n          # parameters within parentheses
-    (?P<body>(?:.|\n)*?)                       # non-greedy capture of the body
+    \(\s*(?P<params>[^\)]*)\s*\)\s*\n           # parameters within parentheses
+    (?P<body>(?:.|\n)*?)                        # non-greedy capture of the body
     ^\s*end\b                                   # end keyword
 ''', re.MULTILINE | re.VERBOSE)
 
@@ -51,7 +51,7 @@ ANONYMOUS_FUNC_PATTERN = re.compile(r'''
     ^\s*
     (?P<var>[A-Za-z_][\w!?@#$%^&*+\-]*)\s*=\s* # variable name with special characters and assignment
     \(\s*(?P<params>[^\)]*)\s*\)\s*->\s*       # parameters within parentheses followed by ->
-    (?P<body>.*)                                # function body expression
+    (?P<body>.*)                               # function body expression
 ''', re.MULTILINE | re.VERBOSE)
 
 
