@@ -41,9 +41,7 @@ def encode_data(
 
     if verbose: print("Creating the actual functions...")
     functions["complete_function"] = \
-        "### DOCUMENTATION ### " + "\n" \
         + functions["documentation"] + "\n" \
-        + "### CODE ### " + "\n" \
         + functions["signature"] + "\n" \
         + functions["body"] + "\n" \
         + "end"
