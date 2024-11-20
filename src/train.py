@@ -34,10 +34,9 @@ def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoin
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--train-model", action="store_true", help="Force the training of the model.")
     parser.add_argument("--frac-of-data", type=float, default=1, help="Fraction of data to use for training. Default is 1. Use a smaller value (between 0 and 1) for testing.")
     parser.add_argument("--simple-input", action="store_true", help="Save the input only the docstring and signature of the function, and setas the expected output the body of the function. If you don't give this flag, then the entire function (docstring + signature + body) is given as both input and expected output")
-    parser.add_argument("--encoded-data-path", type=str, default=os.path.join("data", "encoded_data"), help="Path to the encoded dataset. Default is 'data/encoded_data'. Note: The path is then extended with the fraction of the data, together with whether it is only recent issues or not.")
+    parser.add_argument("--encoded-data-path", type=str, default=os.path.join("data", "encoded_data"), help="Path to the encoded dataset. Default is 'data/encoded_data'. Note: The path is then extended with the fraction of the data, together with whether it made with simple input or not.")
 
     args = parser.parse_args()
 
@@ -51,13 +50,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if args.train_model:
-        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME).to(device)
-    else:
-        if args.checkpoint:
-            model = AutoModelForCausalLM.from_pretrained(args.checkpoint)
-        else:
-            raise ValueError("You need to provide a checkpoint path if you're not forcing training")
+    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME).to(device)
 
     output_dir = os.path.join("data", "checkpoints")
     output_dir += f"_{args.frac_of_data*100:03.0f}"
@@ -69,5 +62,4 @@ if __name__ == "__main__":
     #     param.requires_grad = False
     print(f"num params:", model.num_parameters())
     print(f"num trainable params:", model.num_parameters(only_trainable=True))
-    if args.train_model:
-        trainer.train()
+    trainer.train()
