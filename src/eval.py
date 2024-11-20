@@ -47,6 +47,7 @@ if __name__ == "__main__":
         simple_input=args.simple_input,
         verbose=True,
     )
+    print(f"Training on {len(encoded_dataset)} instances")
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
