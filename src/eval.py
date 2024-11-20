@@ -59,7 +59,11 @@ if __name__ == "__main__":
         else:
             raise ValueError("You need to provide a checkpoint path if you're not forcing training")
 
-    trainer = trainer_for_model(model, encoded_dataset)
+    output_dir = os.path.join("data", "checkpoints")
+    output_dir += f"_{args.frac_of_data*100:03.0f}"
+    if args.simple_input:
+        output_dir += "_simple"
+    trainer = trainer_for_model(model, encoded_dataset, output_dir=output_dir)
 
     # for param in model.model.layers[:20].parameters():
     #     param.requires_grad = False
