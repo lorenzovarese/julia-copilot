@@ -40,6 +40,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--train-model", action="store_true", help="Force the training of the model.")
     parser.add_argument("--frac-of-data", type=float, default=1, help="Fraction of data to use for training. Default is 1. Use a smaller value (between 0 and 1) for testing.")
+    parser.add_argument("--simple-input", type=float, default=1, help="Fraction of data to use for training. Default is 1. Use a smaller value (between 0 and 1) for testing.")
     parser.add_argument("--encoded-data-path", type=str, default=os.path.join("data", "encoded_data"), help="Path to the encoded dataset. Default is 'data/encoded_data'. Note: The path is then extended with the fraction of the data, together with whether it is only recent issues or not.")
 
     args = parser.parse_args()
@@ -47,6 +48,7 @@ if __name__ == "__main__":
     encoded_dataset = encode_data(
         encoded_data_path=args.encoded_data_path,
         frac_of_data=args.frac_of_data,
+        simple_input=args.simple_input,
         verbose=True,
     )
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"

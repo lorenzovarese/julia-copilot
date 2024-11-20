@@ -16,10 +16,16 @@ CONTEXT_LENGTH = 2048
 def encode_data(
         encoded_data_path=os.path.join("data", f"encoded_data"),
         data_path=os.path.join("data", "combined_projects.zip"), 
+        simple_input=False,
         frac_of_data=1,
         force=False,
         verbose=False,
     ):
+    encoded_data_path = encoded_data_path + f"_{frac_of_data*100:03.0f}"
+
+    if simple_input:
+        encoded_data_path = encoded_data_path + "_simple"
+
     if not force and os.path.exists(encoded_data_path):
         if verbose: print(f"Loading encoded data from '{encoded_data_path}'...")
         return datasets.load_from_disk(encoded_data_path)
@@ -40,6 +46,12 @@ def encode_data(
         functions = functions.sample(frac=frac_of_data, random_state=100)
 
     if verbose: print("Creating the actual functions...")
+
+    if simple_input:
+        functions["simple_input"] = \
+            + functions["documentation"] + "\n" \
+            + functions["signature"] + "\n" 
+
     functions["complete_function"] = \
         + functions["documentation"] + "\n" \
         + functions["signature"] + "\n" \
@@ -58,16 +70,25 @@ def encode_data(
     functions = functions[functions.parallel_apply(filter_function, axis=1)]
     print(f"Filtered out {len_before - len(functions)} functions ({len(functions)} remaining).")
 
-
     if verbose: print("Encoding data...")
     def encode_function(function):
-        tokenized_inputs = TOKENIZER(
-            function["complete_function"],
-            truncation=True,
-            max_length=CONTEXT_LENGTH,
-            padding="max_length"
-        )
-        tokenized_inputs['labels'] = tokenized_inputs['input_ids'].copy()
+        if simple_input:
+            tokenized_inputs = TOKENIZER(
+                function["simple_input"],
+                truncation=True,
+                max_length=CONTEXT_LENGTH,
+                padding="max_length"
+            )
+            tokenized_inputs['labels'] = TOKENIZER(function["body"] + "\nend")['input_ids']
+        else:
+            tokenized_inputs = TOKENIZER(
+                function["complete_function"],
+                truncation=True,
+                max_length=CONTEXT_LENGTH,
+                padding="max_length"
+            )
+            tokenized_inputs['labels'] = tokenized_inputs['input_ids'].copy()
+
         return tokenized_inputs
     dataset = datasets.Dataset.from_pandas(functions)
     dataset = dataset.map(encode_function, batched=True, num_proc=NUM_PROC)
