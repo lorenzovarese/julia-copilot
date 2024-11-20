@@ -5,7 +5,6 @@ import datasets
 import argparse
 from pandarallel import pandarallel  # For parallel processing
 NUM_PROC = min(50, multiprocessing.cpu_count() - 1)
-pandarallel.initialize(progress_bar=True, nb_workers=NUM_PROC)
 
 MODEL_NAME = "HuggingFaceTB/SmolLM-135M"
 TOKENIZER = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -29,6 +28,8 @@ def encode_data(
     if not force and os.path.exists(encoded_data_path):
         if verbose: print(f"Loading encoded data from '{encoded_data_path}'...")
         return datasets.load_from_disk(encoded_data_path)
+
+    pandarallel.initialize(progress_bar=True, nb_workers=NUM_PROC)
     
     if verbose: 
         if force: print("Forcing re-encoding of data.")
