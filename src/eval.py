@@ -3,8 +3,7 @@ import torch
 from encode_data import encode_data, TOKENIZER, MODEL_NAME
 
 from transformers import AutoModelForCausalLM
-from transformers import TrainingArguments, Trainer
-
+from transformers import TrainingArguments, Trainer, EarlyStoppingCallback
 
 
 def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoints")):
@@ -14,13 +13,17 @@ def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoin
 
     args = TrainingArguments(
         save_strategy="epoch",
+        # eval_strategy="epoch",
         output_dir=output_dir,
         overwrite_output_dir=False,
         learning_rate=2e-5,
         per_device_train_batch_size=2,
         num_train_epochs=5,
         fp16=True,
+        # load_best_model_at_end=True,
     )
+
+    early_stop = EarlyStoppingCallback(3, 1.0)
 
     trainer = Trainer(
         model,
@@ -28,6 +31,7 @@ def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoin
         train_dataset=dataset,
         tokenizer=TOKENIZER,
         # compute_metrics=compute_metrics,
+        callbacks=[early_stop],
     )
 
     return trainer
