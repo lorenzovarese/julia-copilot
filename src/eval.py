@@ -71,6 +71,3 @@ if __name__ == "__main__":
     print(f"num trainable params:", model.num_parameters(only_trainable=True))
     if args.train_model:
         trainer.train()
-        save_path = os.path.join("data", "best-model")
-        trainer.model.save_pretrained(save_path)
-        trainer.tokenizer.save_pretrained(save_path)
