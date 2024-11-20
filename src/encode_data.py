@@ -52,11 +52,11 @@ def encode_data(
 
     if simple_input:
         functions["simple_input"] = \
-            + functions["documentation"] + "\n" \
+            functions["documentation"] + "\n" \
             + functions["signature"] + "\n" 
 
     functions["complete_function"] = \
-        + functions["documentation"] + "\n" \
+        functions["documentation"] + "\n" \
         + functions["signature"] + "\n" \
         + functions["body"] + "\n" \
         + "end"
@@ -82,7 +82,13 @@ def encode_data(
                 max_length=CONTEXT_LENGTH,
                 padding="max_length"
             )
-            tokenized_inputs['labels'] = TOKENIZER(function["body"] + "\nend")['input_ids']
+            tokenized_output = TOKENIZER(
+                [body + "\nend" for body in function["body"]],
+                truncation=True,
+                max_length=CONTEXT_LENGTH,
+                padding="max_length"
+            )
+            tokenized_inputs['labels'] = tokenized_output['input_ids'].copy()
         else:
             tokenized_inputs = TOKENIZER(
                 function["complete_function"],
@@ -105,6 +111,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--force", action="store_true", help="Force re-encoding of data.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Print verbose output.")
     parser.add_argument("--encoded-data-path", type=str, default=os.path.join("data", "encoded_data"), help="Path to save the encoded dataset. Default is 'data/encoded_data'. Note: The path is then extended with the fraction of the data, together with whether it is only recent issues or not.")
+    parser.add_argument("--simple-input", action="store_true", help="Save the input only the docstring and signature of the function, and setas the expected output the body of the function. If you don't give this flag, then the entire function (docstring + signature + body) is given as both input and expected output")
     parser.add_argument("--frac", type=float, default=1, help="Fraction of the data to use. Default is 1.")
 
     args = parser.parse_args()
@@ -112,5 +119,6 @@ if __name__ == "__main__":
         encoded_data_path=args.encoded_data_path,
         force=args.force,
         verbose=args.verbose,
+        simple_input=args.simple_input,
         frac_of_data=args.frac,
     )
