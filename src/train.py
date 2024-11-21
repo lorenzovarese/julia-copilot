@@ -53,7 +53,7 @@ if __name__ == "__main__":
     model = AutoModelForCausalLM.from_pretrained(args.model).to(device)
 
     output_dir = os.path.join("checkpoints", args.model.replace("/", "_"))
-    output_dir = os.path.join(f"{args.frac_of_data*100:03.0f}")
+    output_dir = os.path.join(output_dir, f"{args.frac_of_data*100:03.0f}")
     if args.simple_input:
         output_dir += "_simple"
     trainer = trainer_for_model(model, encoded_dataset, output_dir=output_dir)
