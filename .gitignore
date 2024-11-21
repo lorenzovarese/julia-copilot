@@ -162,4 +162,5 @@ cython_debug/
 #.idea/
 /data/repos/
 /data/repos.zip
-/data/extracted_projects
+/data/extracted_data
+/benchmark/results
