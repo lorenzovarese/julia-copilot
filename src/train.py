@@ -1,6 +1,7 @@
 import argparse, os
 import torch
-from encode_data import encode_data, TOKENIZER, MODEL_NAME
+
+from encode_data import encode_data
 
 from transformers import AutoModelForCausalLM
 from transformers import TrainingArguments, Trainer
@@ -24,13 +25,14 @@ def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoin
         model,
         args,
         train_dataset=dataset,
-        tokenizer=TOKENIZER,
+        # tokenizer=TOKENIZER,
     )
 
     return trainer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", type=str, default="HuggingFaceTB/SmolLM-135M", help="Model to use for training. Default is 'HuggingFaceTB/SmolLM-135M'.")
     parser.add_argument("--frac-of-data", type=float, default=1, help="Fraction of data to use for training. Default is 1. Use a smaller value (between 0 and 1) for testing.")
     parser.add_argument("--simple-input", action="store_true", help="Save the input only the docstring and signature of the function, and setas the expected output the body of the function. If you don't give this flag, then the entire function (docstring + signature + body) is given as both input and expected output")
     parser.add_argument("--encoded-data-path", type=str, default=os.path.join("data", "encoded_data"), help="Path to the encoded dataset. Default is 'data/encoded_data'. Note: The path is then extended with the fraction of the data, together with whether it made with simple input or not.")
@@ -39,6 +41,7 @@ if __name__ == "__main__":
 
     encoded_dataset = encode_data(
         encoded_data_path=args.encoded_data_path,
+        model=args.model,
         frac_of_data=args.frac_of_data,
         simple_input=args.simple_input,
         verbose=True,
@@ -47,7 +50,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME).to(device)
+    model = AutoModelForCausalLM.from_pretrained(args.model).to(device)
 
     output_dir = os.path.join("data", "checkpoints")
     output_dir += f"_{args.frac_of_data*100:03.0f}"

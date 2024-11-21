@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoConfig
 import pandas as pd
 import os, multiprocessing
 import datasets
@@ -6,21 +6,26 @@ import argparse
 from pandarallel import pandarallel  # For parallel processing
 NUM_PROC = min(50, multiprocessing.cpu_count() - 1)
 
-MODEL_NAME = "HuggingFaceTB/SmolLM-135M"
-TOKENIZER = AutoTokenizer.from_pretrained(MODEL_NAME)
-TOKENIZER.pad_token = TOKENIZER.eos_token
+# MODEL_NAME = "HuggingFaceTB/SmolLM-135M"
+# TOKENIZER = AutoTokenizer.from_pretrained(MODEL_NAME)
+# TOKENIZER.pad_token = TOKENIZER.eos_token
 
 CONTEXT_LENGTH = 2048
 
 def encode_data(
         encoded_data_path=os.path.join("data", f"encoded_data"),
         data_path=os.path.join("data", "combined_projects.zip"), 
+        model="HuggingFaceTB/SmolLM-135M",
         simple_input=False,
         frac_of_data=1,
         force=False,
         verbose=False,
     ):
     encoded_data_path = encoded_data_path + f"_{frac_of_data*100:03.0f}"
+    config = AutoConfig.from_pretrained(model)
+    context_length = config.max_position_embeddings
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    tokenizer.pad_token = tokenizer.eos_token
 
     if simple_input:
         encoded_data_path = encoded_data_path + "_simple"
@@ -64,9 +69,7 @@ def encode_data(
     if verbose: print("Filtering functions that are longer than the context length but have at least some documentation...")
     def filter_function(function):
         return (
-            function['type'] == "basic"
-            and len(TOKENIZER(function['documentation'])['input_ids']) > 10 
-            and len(TOKENIZER(function["complete_function"])['input_ids']) <= CONTEXT_LENGTH
+            len(tokenizer(function["complete_function"])['input_ids']) <= CONTEXT_LENGTH
         )
 
     len_before = len(functions)
@@ -76,24 +79,24 @@ def encode_data(
     if verbose: print("Encoding data...")
     def encode_function(function):
         if simple_input:
-            tokenized_inputs = TOKENIZER(
+            tokenized_inputs = tokenizer(
                 function["simple_input"],
                 truncation=True,
                 max_length=CONTEXT_LENGTH,
                 padding="max_length"
             )
-            tokenized_output = TOKENIZER(
-                [body + "\nend" for body in function["body"]],
+            tokenized_output = tokenizer(
+                [body + "\nend" + tokenizer.eos_token for body in function["body"]],
                 truncation=True,
                 max_length=CONTEXT_LENGTH,
                 padding="max_length"
             )
             tokenized_inputs['labels'] = tokenized_output['input_ids'].copy()
         else:
-            tokenized_inputs = TOKENIZER(
+            tokenized_inputs = tokenizer(
                 function["complete_function"],
                 truncation=True,
-                max_length=CONTEXT_LENGTH,
+                max_length=context_length,
                 padding="max_length"
             )
             tokenized_inputs['labels'] = tokenized_inputs['input_ids'].copy()
@@ -108,6 +111,7 @@ def encode_data(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Encode the dataset for training a model.")
+    parser.add_argument("-m", "--model", type=str, default="HuggingFaceTB/SmolLM-135M", help="Model to use for training. Default is 'HuggingFaceTB/SmolLM-135M'.")
     parser.add_argument("-f", "--force", action="store_true", help="Force re-encoding of data.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Print verbose output.")
     parser.add_argument("--encoded-data-path", type=str, default=os.path.join("data", "encoded_data"), help="Path to save the encoded dataset. Default is 'data/encoded_data'. Note: The path is then extended with the fraction of the data, together with whether it is only recent issues or not.")
@@ -117,6 +121,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     encode_data(
         encoded_data_path=args.encoded_data_path,
+        model=args.model,
         force=args.force,
         verbose=args.verbose,
         simple_input=args.simple_input,
