@@ -13,9 +13,7 @@ def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoin
 
     args = TrainingArguments(
         save_strategy="epoch",
-        # eval_strategy="epoch",
         output_dir=output_dir,
-        # overwrite_output_dir=False,
         learning_rate=2e-5,
         per_device_train_batch_size=2,
         num_train_epochs=5,
@@ -27,7 +25,6 @@ def trainer_for_model(model, dataset, output_dir=os.path.join("data", "checkpoin
         args,
         train_dataset=dataset,
         tokenizer=TOKENIZER,
-        # compute_metrics=compute_metrics,
     )
 
     return trainer
