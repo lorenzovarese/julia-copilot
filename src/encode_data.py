@@ -7,28 +7,28 @@ from pandarallel import pandarallel  # For parallel processing
 import re
 NUM_PROC = min(50, multiprocessing.cpu_count() - 1)
 
-# MODEL_NAME = "HuggingFaceTB/SmolLM-135M"
-# TOKENIZER = AutoTokenizer.from_pretrained(MODEL_NAME)
-# TOKENIZER.pad_token = TOKENIZER.eos_token
-
 CONTEXT_LENGTH = 2048
+
+def setup_tokenizer(model_name):
+    config = AutoConfig.from_pretrained(model_name)
+    context_length = config.max_position_embeddings
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer, context_length
 
 def encode_data(
         encoded_data_root=os.path.join("data", f"encoded_data"),
         data_path=os.path.join("data", "combined_projects.zip"), 
-        model="HuggingFaceTB/SmolLM-135M",
+        model_name="HuggingFaceTB/SmolLM-135M",
         simple_input=False,
         first_line_of_doc=False,
         frac_of_data=1,
         force=False,
         verbose=False,
     ):
-    config = AutoConfig.from_pretrained(model)
-    context_length = config.max_position_embeddings
-    tokenizer = AutoTokenizer.from_pretrained(model)
-    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer, context_length = setup_tokenizer(model_name)
 
-    model_label = model.replace("/", "_")
+    model_label = model_name.replace("/", "_")
 
     encoded_data_path = os.path.join(encoded_data_root, model_label)
     encoded_data_path = os.path.join(encoded_data_path, f"{frac_of_data*100:03.0f}")
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     encode_data(
         encoded_data_root=args.encoded_data_root,
-        model=args.model,
+        model_name=args.model,
         first_line_of_doc=args.first_line,
         force=args.force,
         verbose=args.verbose,

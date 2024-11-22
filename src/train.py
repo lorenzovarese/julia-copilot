@@ -1,13 +1,15 @@
 import argparse, os
 import torch
 
-from encode_data import encode_data
+from encode_data import encode_data, setup_tokenizer
 
 from transformers import AutoModelForCausalLM
 from transformers import TrainingArguments, Trainer
 
 
-def trainer_for_model(model, dataset, output_dir="checkpoints"):
+def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer, _ = setup_tokenizer(model_name)
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -25,7 +27,7 @@ def trainer_for_model(model, dataset, output_dir="checkpoints"):
         model,
         args,
         train_dataset=dataset,
-        # tokenizer=TOKENIZER,
+        tokenizer=tokenizer,
     )
 
     return trainer
@@ -41,25 +43,21 @@ if __name__ == "__main__":
 
     encoded_dataset = encode_data(
         encoded_data_root=args.encoded_data_root,
-        model=args.model,
+        model_name=args.model,
         frac_of_data=args.frac_of_data,
         simple_input=args.simple_input,
         verbose=True,
     )
     print(f"Training on {len(encoded_dataset)} instances")
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model = AutoModelForCausalLM.from_pretrained(args.model).to(device)
 
     output_dir = os.path.join("checkpoints", args.model.replace("/", "_"))
     output_dir = os.path.join(output_dir, f"{args.frac_of_data*100:03.0f}")
     if args.simple_input:
         output_dir += "_simple"
-    trainer = trainer_for_model(model, encoded_dataset, output_dir=output_dir)
+    trainer = trainer_for_model(args.model, encoded_dataset, output_dir=output_dir)
 
     # for param in model.model.layers[:20].parameters():
     #     param.requires_grad = False
-    print(f"num params:", model.num_parameters())
-    print(f"num trainable params:", model.num_parameters(only_trainable=True))
+    # print(f"num params:", model.num_parameters())
+    # print(f"num trainable params:", model.num_parameters(only_trainable=True))
     trainer.train()
