@@ -35,6 +35,7 @@ def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model", type=str, default="HuggingFaceTB/SmolLM-135M", help="Model to use for training. Default is 'HuggingFaceTB/SmolLM-135M'.")
+    parser.add_argument("--first-line", action="store_true", help="Extract only the first line of the documentation.")
     parser.add_argument("--frac-of-data", type=float, default=1, help="Fraction of data to use for training. Default is 1. Use a smaller value (between 0 and 1) for testing.")
     parser.add_argument("--simple-input", action="store_true", help="Save the input only the docstring and signature of the function, and setas the expected output the body of the function. If you don't give this flag, then the entire function (docstring + signature + body) is given as both input and expected output")
     parser.add_argument("--encoded-data-root", type=str, default=os.path.join("data", "encoded_data"), help="Path to the encoded dataset. Default is 'data/encoded_data'.")
@@ -46,6 +47,7 @@ if __name__ == "__main__":
         model_name=args.model,
         frac_of_data=args.frac_of_data,
         simple_input=args.simple_input,
+        first_line_of_doc=args.first_line,
         verbose=True,
     )
     print(f"Training on {len(encoded_dataset)} instances")
@@ -54,6 +56,10 @@ if __name__ == "__main__":
     output_dir = os.path.join(output_dir, f"{args.frac_of_data*100:03.0f}")
     if args.simple_input:
         output_dir += "_simple"
+    if args.first_line:
+        output_dir += "_first_line"
+
+    print(f"Saving checkpoints to '{output_dir}'")
     trainer = trainer_for_model(args.model, encoded_dataset, output_dir=output_dir)
 
     # for param in model.model.layers[:20].parameters():
