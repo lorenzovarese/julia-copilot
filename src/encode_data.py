@@ -80,6 +80,7 @@ def encode_data(
     if frac_of_data < 1:
         if verbose: print(f"Sampling {frac_of_data*100:0.0f}% of the data...")
         functions = functions.sample(frac=frac_of_data, random_state=100)
+        if verbose: print(f"After sampling we {len(functions):,} remaining instances...")
 
     if verbose: print("Cleaning documentations...")
     def clean_doc(docstring):
