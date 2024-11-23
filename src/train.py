@@ -14,11 +14,15 @@ def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
+    batch_size = 2
+    if model_name == "HuggingFaceTB/SmolLM-360M": # can't fit more than 1 batch
+        batch_size = 1
+
     args = TrainingArguments(
         save_strategy="epoch",
         output_dir=output_dir,
         learning_rate=2e-5,
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=batch_size,
         num_train_epochs=5,
         fp16=True,
     )
