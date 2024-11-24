@@ -7,20 +7,15 @@ from transformers import AutoModelForCausalLM
 from transformers import TrainingArguments, Trainer
 
 
-def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    if model_name == "HuggingFaceTB/SmolLM-360M" or True:
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16, use_cache=False)
-        model.gradient_checkpointing_enable() # to reduce memory usage
-        model.enable_input_require_grads() # to reduce memory usage
-        fp16 = False
-        batch_size = 5
-    else:
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
-        fp16 = True
-        batch_size = 2
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
     tokenizer, _ = setup_tokenizer(model_name)
+
+    batch_size = 2
+    if model_name == "HuggingFaceTB/SmolLM-360M": # can't fit more than 1 batch
+        batch_size = 1
 
     args = TrainingArguments(
         save_strategy="epoch",
@@ -29,7 +24,7 @@ def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
         learning_rate=2e-5,
         per_device_train_batch_size=batch_size,
         num_train_epochs=5,
-        fp16=fp16,
+        fp16=True,
     )
 
     trainer = Trainer(
