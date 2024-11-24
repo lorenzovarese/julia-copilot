@@ -67,7 +67,6 @@ def encode_data(
     len_before = len(functions)
     functions = functions[functions.apply(keep_funcs_with_doc, axis=1)]
     if verbose: print(f"Filtered out {len_before - len(functions):,} functions ({len(functions):,} remaining).")
-    # print the number of function with an ' to separate the hundreds from the thousands
 
     if first_line_of_doc:
         if verbose: print("Extracting first line of documentation...")
