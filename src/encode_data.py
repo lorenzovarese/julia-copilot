@@ -43,7 +43,7 @@ def encode_data(
         if verbose: print(f"Loading encoded data from '{encoded_data_path}'...")
         return datasets.load_from_disk(encoded_data_path)
 
-    pandarallel.initialize(progress_bar=True, nb_workers=NUM_PROC)
+    pandarallel.initialize(progress_bar=verbose, nb_workers=NUM_PROC, verbose=1 if verbose else 0)
     
     if verbose: 
         if force: print("Forcing re-encoding of data.")
