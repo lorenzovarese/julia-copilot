@@ -68,6 +68,16 @@ def encode_data(
     functions = functions[functions.apply(keep_funcs_with_doc, axis=1)]
     if verbose: print(f"Filtered out {len_before - len(functions):,} functions ({len(functions):,} remaining).")
 
+    if verbose: print("Removing from documenation the signature of the function if it is presnet in the first line")
+    def remove_signature_from_doc(docstring, signature):
+        sig = re.sub(r"^function ", "", signature)
+        if docstring.startswith(sig):
+            new_docstring = docstring[len(sig):]
+            new_docstring = re.sub(r"^\n*", "", new_docstring)
+            return new_docstring
+        return docstring
+    functions["documentation"] = functions.apply(lambda x: remove_signature_from_doc(x["documentation"], x["signature"]), axis=1)
+
     if first_line_of_doc:
         if verbose: print("Extracting first line of documentation...")
         def first_line(docstring):
