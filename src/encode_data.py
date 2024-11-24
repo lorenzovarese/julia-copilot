@@ -70,13 +70,19 @@ def encode_data(
 
     if verbose: print("Removing from documenation the signature of the function if it is present in the first line")
     def remove_signature_from_doc(docstring, signature):
-        sig = re.sub(r"^function ", "", signature)
-        if docstring.startswith(sig):
-            new_docstring = docstring[len(sig):]
-            new_docstring = re.sub(r"^\n*", "", new_docstring)
-            return new_docstring
-        return docstring
-    functions["documentation"] = functions.apply(lambda x: remove_signature_from_doc(x["documentation"], x["signature"]), axis=1)
+        # Extract the function name from the signature
+        function_name = re.match(r"^function\s+([^(]+)", signature).group(1)
+        # Pattern to match the function name followed by parentheses with anything inside them
+        pattern = rf"^(function )?\s*{re.escape(function_name)}\s*\(.*?\)\s*"
+        # Remove the matched part from the start of the docstring
+        new_docstring = docstring
+        while re.match(pattern, new_docstring, flags=re.DOTALL):
+            new_docstring = re.sub(pattern, "", new_docstring, flags=re.DOTALL)
+        # Remove any leading/trailing newlines
+        new_docstring = re.sub(r"^\n*", "", new_docstring)
+        new_docstring = re.sub(r"\n*$", "", new_docstring)
+        return new_docstring
+    functions["documentation"] = functions.parallel_apply(lambda x: remove_signature_from_doc(x["documentation"], x["signature"]), axis=1)
 
     if first_line_of_doc:
         if verbose: print("Extracting first line of documentation...")
