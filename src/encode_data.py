@@ -122,10 +122,13 @@ def encode_data(
         + "end" \
         + tokenizer.eos_token
 
-    if verbose: print("Filtering functions that are longer than the context length...")
+    if verbose: print("Filtering functions that are longer than the context length, that have too little docstring or are tests...")
     def filter_function(function):
         return (
-            len(tokenizer(function["complete_function"])['input_ids']) <= CONTEXT_LENGTH
+            len(tokenizer(function["documentation"])['input_ids']) >= 10
+            and len(tokenizer(function["complete_function"])['input_ids']) <= CONTEXT_LENGTH
+            and "@testset" not in function["body"] 
+            and "function test" not in function["signature"].lower()
         )
 
     len_before = len(functions)
