@@ -86,9 +86,6 @@ def encode_data(
             if dot_pos == -1 and double_newline_pos == -1:
                 return docstring
             stop_pos = min(dot_pos if dot_pos >= 0 else float('inf'), double_newline_pos if double_newline_pos >= 0 else float('inf'))
-            if docstring.startswith("Returns a small test LP that is primal"):
-                print(docstring)
-                print(dot_pos, double_newline_pos, stop_pos)
             return docstring[:stop_pos+1]
         functions["documentation"] = functions["documentation"].map(first_line)
 
