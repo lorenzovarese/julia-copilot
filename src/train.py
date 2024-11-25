@@ -7,7 +7,8 @@ from transformers import AutoModelForCausalLM
 from transformers import TrainingArguments, Trainer
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+if "CUDA_VISIBLE_DEVICES" not in os.environ:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
