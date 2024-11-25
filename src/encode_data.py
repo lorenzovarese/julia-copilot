@@ -64,11 +64,22 @@ def encode_data(
     if verbose: print("Dropping duplicates...")
     functions = functions.drop_duplicates(subset=["documentation", "signature", "body"])
 
-    if verbose: print("Filtering functions without doc and that are not basic...")
+    if verbose: print("Filtering functions without doc, that are not basic and that are in the benchmark...")
+    benchmarks = pd.read_json("benchmark/humaneval-jl-reworded.jsonl", lines=True)
+    def get_function_name(prompt):
+        prompt = re.sub(f'""".*?"""', "", prompt, flags=re.DOTALL)
+        return re.search(r"function ([^(]+)\(", prompt).group(1)
+    functions_in_benchmark = benchmarks.prompt.map(get_function_name)
+
     def keep_funcs_with_doc(function):
+        m = re.search(r"function ([^(]+)\(", function["signature"])
+        if m is None:
+            return False
+        function_name = m.group(1)
         return (
             function['type'] == "basic"
             and len(function['documentation']) > 0
+            and function_name not in functions_in_benchmark
         )
     len_before = len(functions)
     functions = functions[functions.apply(keep_funcs_with_doc, axis=1)]
