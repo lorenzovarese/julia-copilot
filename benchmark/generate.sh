@@ -1,6 +1,8 @@
 #!/bin/bash
 
-export CUDA_VISIBLE_DEVICES=2
+if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
+    export CUDA_VISIBLE_DEVICES=2
+fi
 
 # ========== Setup the benchmark tools ========== #
 
