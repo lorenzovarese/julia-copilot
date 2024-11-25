@@ -52,6 +52,12 @@ def encode_data(
 
     projects = pd.read_json(data_path)
 
+    def filter_projects(project):
+        return project["project"] != "HumanEval.jl"
+
+    if verbose: print("Removing unwanted projects (that might be in the benchmark)...")
+    projects = projects[projects.apply(filter_projects, axis=1)]
+
     if verbose: print("Extracting functions...")
     functions = pd.DataFrame([func for funcs in projects.functions for func in funcs])
 
