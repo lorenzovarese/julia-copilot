@@ -10,13 +10,9 @@ from transformers import TrainingArguments, Trainer
 if "CUDA_VISIBLE_DEVICES" not in os.environ:
     os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-def trainer_for_model(model_name, dataset, output_dir="checkpoints"):
+def trainer_for_model(model_name, dataset, batch_size=2, output_dir="checkpoints"):
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
     tokenizer, _ = setup_tokenizer(model_name)
-
-    batch_size = 2
-    if model_name == "HuggingFaceTB/SmolLM-360M": # can't fit more than 1 batch
-        batch_size = 1
 
     args = TrainingArguments(
         save_strategy="epoch",
@@ -42,6 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--model", type=str, default="HuggingFaceTB/SmolLM-135M", help="Model to use for training. Default is 'HuggingFaceTB/SmolLM-135M'.")
     parser.add_argument("--first-line", action="store_true", help="Extract only the first line of the documentation.")
     parser.add_argument("--frac-of-data", type=float, default=1, help="Fraction of data to use for training. Default is 1. Use a smaller value (between 0 and 1) for testing.")
+    parser.add_argument("-b", "--batch-size", type=int, default=2, help="Batch size for training. Default is 2. Increase this if you have a larger GPU.")
     parser.add_argument("--simple-input", action="store_true", help="Save the input only the docstring and signature of the function, and setas the expected output the body of the function. If you don't give this flag, then the entire function (docstring + signature + body) is given as both input and expected output")
     parser.add_argument("--encoded-data-root", type=str, default=os.path.join("data", "encoded_data"), help="Path to the encoded dataset. Default is 'data/encoded_data'.")
 
@@ -65,7 +62,7 @@ if __name__ == "__main__":
         output_dir += "_first_line"
 
     print(f"Saving checkpoints to '{output_dir}'")
-    trainer = trainer_for_model(args.model, encoded_dataset, output_dir=output_dir)
+    trainer = trainer_for_model(args.model, encoded_dataset, batch_size=args.batch_size, output_dir=output_dir)
 
     # for param in model.model.layers[:20].parameters():
     #     param.requires_grad = False
