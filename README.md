@@ -55,3 +55,22 @@ This project uses GitHub repositories marked with Julia as the primary language.
    - To clone and preprocess repositories: `python src/clone.py`
    - To train the model: `python src/train.py`
    - To benchmark the model: Use `benchmark/evaluate.sh`
+
+## Training Parameters
+
+| Parameter            | Default Value                     | Description                                                                                     |
+|----------------------|-----------------------------------|-------------------------------------------------------------------------------------------------|
+| `--model`            | `HuggingFaceTB/SmolLM-135M`      | The pre-trained model to use for training.                                                     |
+| `--quantized`        | `False`                          | Flag to enable model quantization using BitsAndBytes.                                          |
+| `--first-line`       | `False`                          | Extract only the first line of the documentation as input.                                     |
+| `--frac-of-data`     | `1`                              | Fraction of the dataset to use for training. Use a value between 0 and 1 for partial datasets. |
+| `--batch-size`       | `2`                              | Batch size for training. Increase this if your GPU supports larger batches.                    |
+| `--encoded-data-root`| `data/encoded_data`              | Path to the encoded dataset.                                                                   |
+
+### Example Usage
+
+```bash
+python train.py --model HuggingFaceTB/SmolLM-135M --quantized --frac-of-data 0.35 --batch-size 4
+```
+
+This command trains the model with quantization enabled, using 35% of the dataset, and a batch size of 4.
