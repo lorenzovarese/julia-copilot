@@ -1,6 +1,8 @@
 #!/bin/bash
 
-export CUDA_VISIBLE_DEVICES=0
+if [ -z "$CUDA_VISIBLE_DEVICES" ]; then
+    export CUDA_VISIBLE_DEVICES=2
+fi
 
 # ========== Setup the benchmark tools ========== #
 
@@ -22,7 +24,7 @@ LANGUAGE="jl"
 BENCHMARK_DATASET="humaneval"
 
 BATCH_SIZE=8
-MAX_TOKENS=1024
+MAX_TOKENS=2048
 TEMPERATURE=0.2
 COMPLETION_LIMIT=1
 
