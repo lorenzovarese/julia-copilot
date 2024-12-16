@@ -40,12 +40,12 @@ if __name__ == "__main__":
     result = mcnemar(contingency_table, exact=True)
     
     # Print the results
-    print("\nMcNemar's Test Results:")
+    # print("\nMcNemar's Test Results:")
     print(f"p-value: {result.pvalue}")
     
     # Interpret results
-    alpha = 0.05
-    if result.pvalue < alpha:
-        print("The difference between the models is statistically significant.")
-    else:
-        print("The difference between the models is NOT statistically significant.")
+    # alpha = 0.05
+    # if result.pvalue < alpha:
+    #     print("The difference between the models is statistically significant.")
+    # else:
+    #     print("The difference between the models is NOT statistically significant.")

@@ -10,6 +10,13 @@ NUM_PROC = min(50, multiprocessing.cpu_count() - 1)
 CONTEXT_LENGTH = 2048
 
 def setup_tokenizer(model_name):
+    """
+    Initializes the tokenizer and retrieves the context length for a given model.
+        Parameters:
+            model_name (str): Name or path of the model for which the tokenizer is to be set up.
+        Returns:
+            tuple: A tuple containing the initialized tokenizer and the maximum context length for the model.
+    """
     config = AutoConfig.from_pretrained(model_name)
     context_length = config.max_position_embeddings
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -26,6 +33,21 @@ def encode_data(
         force=False,
         verbose=False,
     ):
+
+    """
+    Encodes the dataset for training by tokenizing functions and saving the encoded data to disk.
+        Parameters:
+            encoded_data_root (str): Root directory where encoded data will be saved. 
+            data_path (str): Path to the input data file. 
+            model_name (str): Model name to use for tokenizer and configuration. 
+            simple_input (bool): If True, encodes only the docstring and function signature as input, and the function body as output. 
+            first_line_of_doc (bool): If True, extracts only the first line of documentation. 
+            frac_of_data (float): Fraction of the dataset to use. Default is 1 (100% of the data).
+            force (bool): If True, forces re-encoding even if the data exists. 
+            verbose (bool): If True, prints detailed logs of the encoding process. 
+        Returns:
+            datasets.Dataset: A HuggingFace dataset containing the encoded data.
+    """
     tokenizer, context_length = setup_tokenizer(model_name)
 
     model_label = model_name.replace("/", "_")
