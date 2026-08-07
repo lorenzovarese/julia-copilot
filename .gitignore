@@ -164,3 +164,17 @@ cython_debug/
 /data/repos.zip
 /data/extracted_data
 /benchmark/results
+
+# uv / project-specific
+.venv/
+data/repos/
+data/repos.zip
+data/encoded_data/
+data/filtered_functions.json
+data/good_doc_functions.json
+data/bad_doc_functions.json
+data/combined_projects.json
+checkpoints/
+benchmark/MultiPL-E/
+parsing_re_errors.txt
+.ruff_cache/

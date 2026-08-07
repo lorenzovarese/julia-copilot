@@ -40,7 +40,7 @@ echo "Running evaluation script..."
 docker run --rm --network none -v ./$OUTPUT_DIR:/$OUTPUT_DIR:rw multipl-e-eval --dir /$OUTPUT_DIR --output-dir /$OUTPUT_DIR --recursive
 
 echo "Exporting the predictions in a JSON file..."
-python3 -u extract.py -i ./$OUTPUT_DIR -o ${MODEL_LABEL}_results_${LANGUAGE}.json
+uv run --project .. julia-copilot extract -i ./$OUTPUT_DIR -o ${MODEL_LABEL}_results_${LANGUAGE}.json
 
 # Save the results
 echo "Printing the results..."
