@@ -69,6 +69,8 @@ Every stage is a subcommand of the same entry point — run `julia-copilot --hel
 │   └── julia.csv.gz          # Repository metadata
 ├── doc/
 │   └── requirements.pdf
+├── scripts/
+│   └── train.slurm           # SLURM batch script for cluster training
 ├── src/julia_copilot/
 │   ├── cli.py                # Single entry point for every stage
 │   ├── config.py             # Shared paths, defaults, logging
@@ -134,6 +136,28 @@ uv run julia-copilot extract -i benchmark/results/baseline -o baseline.json
 uv run julia-copilot extract -i benchmark/results/finetuned -o finetuned.json
 uv run julia-copilot mcnemar baseline.json finetuned.json
 ```
+
+### Training on a SLURM cluster
+
+`scripts/train.slurm` wraps the `train` stage as a batch job. Partition names, GPU
+flags and module names are site-specific and marked `SITE-SPECIFIC` in the file.
+
+```bash
+sbatch scripts/train.slurm
+sbatch --export=ALL,MODEL=bigcode/starcoderbase-1b,FRAC=0.35,BATCH_SIZE=8 scripts/train.slurm
+sbatch --partition=gpu-long --time=48:00:00 --gres=gpu:a100:1 scripts/train.slurm
+```
+
+Parameters are read from the environment: `MODEL`, `DATA`, `FRAC`, `BATCH_SIZE`,
+`QUANTIZED`, `FIRST_LINE`, `SIMPLE_INPUT`.
+
+Two things the script handles that are easy to get wrong:
+
+- **Caches go to scratch.** `HF_HOME`, `UV_CACHE_DIR` and `TRITON_CACHE_DIR` are
+  redirected off `$HOME`, which is usually quota'd and NFS-backed.
+
+Run `uv sync --locked --extra train` on the login node before the first submission:
+compute nodes are often network-isolated and cannot reach PyPI or the HuggingFace Hub.
 
 ## Training Parameters
 

@@ -77,3 +77,17 @@ def test_mcnemar_takes_two_files(parser):
 
 def test_verbose_is_global(parser):
     assert parser.parse_args(["-v", "clone"]).verbose is True
+
+
+def test_worker_count_respects_slurm_allocation(monkeypatch):
+    """cpu_count() reports the node, not the allocation, and would oversubscribe."""
+    import importlib
+
+    from julia_copilot import config
+
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "8")
+    monkeypatch.delenv("JULIA_COPILOT_NUM_WORKERS", raising=False)
+    assert importlib.reload(config).NUM_WORKERS == 8
+
+    monkeypatch.setenv("JULIA_COPILOT_NUM_WORKERS", "3")
+    assert importlib.reload(config).NUM_WORKERS == 3

@@ -41,7 +41,33 @@ CONTEXT_LENGTH = 2048
 MAX_WORKERS = 50
 """Upper bound on worker processes; the shared GPU box throttles beyond this."""
 
-NUM_WORKERS = max(1, min(MAX_WORKERS, multiprocessing.cpu_count() - 1))
+
+def _detect_workers() -> int:
+    """Number of worker processes to use, respecting whatever bounds us.
+
+    ``multiprocessing.cpu_count()`` reports the *machine's* core count, which
+    ignores cgroup limits. Under a batch scheduler that means a job allocated 8
+    cores on a 128-core node would spawn 50 workers and thrash. Preference
+    order: explicit override, scheduler allocation, then CPU affinity (which
+    SLURM and Docker both constrain via cgroups).
+    """
+    override = os.environ.get("JULIA_COPILOT_NUM_WORKERS")
+    if override and override.isdigit():
+        return max(1, int(override))
+
+    allocated = os.environ.get("SLURM_CPUS_PER_TASK")
+    if allocated and allocated.isdigit():
+        return max(1, int(allocated))
+
+    try:
+        available = len(os.sched_getaffinity(0))  # Linux only
+    except AttributeError:
+        available = multiprocessing.cpu_count()
+
+    return max(1, min(MAX_WORKERS, available - 1))
+
+
+NUM_WORKERS = _detect_workers()
 
 # --------------------------------------------------------------------------- #
 # Repositories excluded from cloning
