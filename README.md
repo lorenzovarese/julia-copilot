@@ -4,7 +4,7 @@ This repository fine-tunes and evaluates small language models for Julia code co
 
 ## Example
 
-Install, then fine-tune `SmolLM-135M` on 35% of the corpus and ask it to complete a function:
+Install, then fine-tune `SmolLM2-135M` on 35% of the corpus and ask it to complete a function:
 
 ```bash
 # 1. Install (uv creates the virtualenv and resolves from uv.lock)
@@ -19,7 +19,7 @@ uv run julia-copilot train \
 
 # 3. Complete a function from its docstring and signature
 uv run julia-copilot query \
-    --checkpoint checkpoints/HuggingFaceTB_SmolLM-135M/035 \
+    --checkpoint checkpoints/HuggingFaceTB_SmolLM2-135M/035 \
     --query '"""
 Add two numbers `x` and `y`.
 """
