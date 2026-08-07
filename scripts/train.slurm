@@ -33,7 +33,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 # Job parameters (override with --export=ALL,NAME=value)
 # -----------------------------------------------------------------------------
-MODEL="${MODEL:-HuggingFaceTB/SmolLM-135M}"
+MODEL="${MODEL:-HuggingFaceTB/SmolLM2-135M}"
 FRAC="${FRAC:-1.0}"
 BATCH_SIZE="${BATCH_SIZE:-4}"
 QUANTIZED="${QUANTIZED:-1}"           # 1 -> 4-bit NF4 + LoRA, 0 -> full fine-tune

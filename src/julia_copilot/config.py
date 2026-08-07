@@ -31,7 +31,7 @@ BENCHMARK_FILE = BENCHMARK_DIR / "humaneval-jl-reworded.jsonl"
 # Model / tokenisation defaults
 # --------------------------------------------------------------------------- #
 
-DEFAULT_MODEL = "HuggingFaceTB/SmolLM-135M"
+DEFAULT_MODEL = "HuggingFaceTB/SmolLM2-135M"
 CONTEXT_LENGTH = 2048
 
 # --------------------------------------------------------------------------- #

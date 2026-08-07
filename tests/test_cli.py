@@ -59,7 +59,7 @@ def test_train_flags(parser):
     assert args.quantized is True
     assert args.frac_of_data == 0.35
     assert args.batch_size == 4
-    assert args.model == "HuggingFaceTB/SmolLM-135M"
+    assert args.model == "HuggingFaceTB/SmolLM2-135M"
 
 
 def test_query_requires_checkpoint_and_query(parser):

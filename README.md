@@ -12,7 +12,7 @@ uv sync --extra train
 
 # 2. Fine-tune: quantised, 35% of the data, batch size 4
 uv run julia-copilot train \
-    --model HuggingFaceTB/SmolLM-135M \
+    --model HuggingFaceTB/SmolLM2-135M \
     --quantized \
     --frac-of-data 0.35 \
     --batch-size 4
@@ -115,8 +115,8 @@ Then, from the repository root:
 uv run julia-copilot clone                       # only if you skipped the download
 uv run julia-copilot parse data/repos.zip --backend tree-sitter
 uv run julia-copilot filter
-uv run julia-copilot encode --model HuggingFaceTB/SmolLM-135M
-uv run julia-copilot train  --model HuggingFaceTB/SmolLM-135M --quantized
+uv run julia-copilot encode --model HuggingFaceTB/SmolLM2-135M
+uv run julia-copilot train  --model HuggingFaceTB/SmolLM2-135M --quantized
 ```
 
 ### Benchmarking
@@ -125,8 +125,8 @@ uv run julia-copilot train  --model HuggingFaceTB/SmolLM-135M --quantized
 
 ```bash
 cd benchmark
-./generate.sh HuggingFaceTB/SmolLM-135M
-./evaluate.sh HuggingFaceTB/SmolLM-135M
+./generate.sh HuggingFaceTB/SmolLM2-135M
+./evaluate.sh HuggingFaceTB/SmolLM2-135M
 ```
 
 To compare two runs, extract each and apply McNemar's test. The models are evaluated on the same problems, so the outcomes are paired and a paired test is the correct one:
@@ -163,7 +163,7 @@ compute nodes are often network-isolated and cannot reach PyPI or the HuggingFac
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `HuggingFaceTB/SmolLM-135M` | Pre-trained model to fine-tune |
+| `--model` | `HuggingFaceTB/SmolLM2-135M` | Pre-trained model to fine-tune |
 | `--quantized` | `False` | 4-bit NF4 quantisation with LoRA adapters |
 | `--first-line` | `False` | Keep only the first sentence of each docstring |
 | `--frac-of-data` | `1.0` | Fraction of the dataset to train on |
